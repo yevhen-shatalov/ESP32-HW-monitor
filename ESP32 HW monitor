@@ -1,0 +1,82 @@
+/* Что идёт в порт: 0-CPU temp, 1-GPU temp, 2-mother temp, 3-max HDD temp, 4-CPU load, 5-GPU load, 6-RAM use, 7-GPU memory use,
+  8-maxFAN, 9-minFAN, 10-maxTEMP, 11-minTEMP, 12-manualFAN, 13-manualCOLOR, 14-fanCtrl, 15-colorCtrl, 16-brightCtrl, 17-LOGinterval, 18-tempSource */
+
+#include <TFT_eSPI.h> 
+
+TFT_eSPI tft = TFT_eSPI();
+TFT_eSprite sprite = TFT_eSprite(&tft);
+
+const int pwmFreq = 5000;
+const int pwmResolution = 8;
+const int pwmLedChannelTFT = 0;
+String string_convert;
+
+char inData[82];       // массив входных значений (СИМВОЛЫ)
+int PCdata[20];
+
+void setup() {
+  // put your setup code here, to run once:
+USBSerial.begin(9600);
+
+tft.init();
+tft.setSwapBytes(true);
+
+tft.fillScreen(TFT_BLACK);
+sprite.createSprite(170,320);
+sprite.setTextDatum(4);
+
+ledcSetup(pwmLedChannelTFT, pwmFreq, pwmResolution);
+
+}
+
+void loop() {
+  // put your main code here, to run repeatedly:
+  
+parsing();  
+sprite.fillSprite(TFT_BLACK); 
+sprite.drawLine(0,80,170,80,0x9CF3);
+sprite.drawLine(0,170,170,170,0x9CF3);
+
+sprite.setTextColor(0x9CF3,TFT_BLACK);
+
+sprite.drawString("CPU temp",60,20,4);
+sprite.drawString(String(PCdata[0]),145,20,4);
+sprite.drawString("CPU load",55,55,4);
+sprite.drawString(String(PCdata[4]),145,55,4);
+
+sprite.drawString("GPU temp",60,110,4);
+sprite.drawString(String(PCdata[1]),145,110,4);
+sprite.drawString("GPU load",55,145,4);
+sprite.drawString(String(PCdata[5]),145,145,4);
+
+sprite.drawString("RAM use",51,200,4);
+sprite.drawString(String(PCdata[6]),145,200,4);
+
+sprite.setTextFont(0);
+sprite.pushSprite(0,0);
+
+}
+
+void parsing() {
+byte index = 0;
+  while (USBSerial.available() > 0) {
+    char aChar = USBSerial.read();
+  
+    if (aChar != 'E') {
+      inData[index] = aChar;
+      index++;
+      inData[index] = '\0';
+    } else {
+      char *p = inData;
+      char *str;
+      index = 0;
+      String value = "";
+      while ((str = strtok_r(p, ";", &p)) != NULL) {
+        string_convert = str;
+        PCdata[index] = string_convert.toInt();
+        index++;
+      }
+      index = 0;
+    }
+  }
+}
